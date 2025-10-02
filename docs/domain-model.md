@@ -98,11 +98,28 @@ managed via operating runbooks.
    logic. UUIDs are mandated across entities to simplify replication and
    distributed workflows.
 
+## Database Options Evaluation
+
+Three candidate data stores were reviewed for managing structured entities once
+the project grows beyond Markdown-based tracking:
+
+| Option | Strengths | Considerations |
+| --- | --- | --- |
+| **SQLite** | Zero-dependency file-based engine, easy to embed within the CLI tooling, strong transactional guarantees. | Requires coordination when multiple contributors mutate the database concurrently; migrations must be versioned in Git. |
+| **PostgreSQL** | Mature relational system with advanced features (JSONB columns, row-level security) and scalable hosting options. | Adds operational overhead for local development; would require provisioning automation and secrets management. |
+| **Document store (LiteFS/SurrealDB)** | Flexible schema evolution, natural fit for nested task metadata, potential offline sync capabilities. | Ecosystem maturity varies; logging integration and query tooling would need additional vetting. |
+
+The recommended near-term path is to adopt SQLite for the first persistent data
+layer. It aligns with the repository's Git-centric workflow, supports
+structured schemas that mirror the existing Markdown representations, and can
+be upgraded to PostgreSQL once concurrency requirements warrant a client/server
+deployment.
+
 ## Future Considerations
 
 - Introduce an event-sourcing stream for CLI actions so that automation can
   rebuild state from log history.
-- Leverage SQLite for storing workspace, project, and task entities while
-  maintaining JSONL logs for append-only record keeping.
-- Expose persistence configuration through the CLI (`imme config`) once more
-  services depend on the data model.
+- Pilot SQLite-based storage using the evaluation above while maintaining JSONL
+  logs for append-only record keeping.
+- Extend the new `imme config` command so that persistence settings (database
+  path, rotation policies) are editable alongside log configuration.

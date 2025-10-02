@@ -41,8 +41,12 @@ structured logging utilities delivered by the CLI.
   data. When sharing logs, strip secrets and adjust permissions explicitly.
 - **Backups**: Copy `.imme/logs.jsonl` into secure storage before destructive
   testing. The log format is append-only and can be replayed by future services.
-- **Configuration Changes**: Update the workspace configuration file (future
-  enhancement) and communicate changes through onboarding notes.
+- **Configuration Changes**: Manage the workspace configuration via the CLI:
+  - Initialize defaults: `imme config init --name "Imme Workspace"`
+  - Review current settings: `imme config show`
+  - Update individual fields: `imme config set --key workspace.environment --value production`
+  After each change, commit the updated `.imme/config.json` to share defaults
+  with the team and document the rationale in `project-manager/task.md`.
 
 ## Troubleshooting
 

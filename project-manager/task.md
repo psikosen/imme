@@ -10,8 +10,10 @@ This document tracks progress for the Imme project. Checkboxes reflect the curre
 - [x] Implemented persistent log storage that complements the console transport.
 - [x] Built a CLI interface that exercises the logger and future business logic end-to-end.
 - [x] Documented operational runbooks and developer onboarding notes.
+- [x] Expanded the CLI with `config` subcommands to manage workspace defaults.
+- [x] Evaluated database options and recommended SQLite for the first persistent store.
 
 ## 🔄 In Progress / Backlog
 
-- [ ] Expand the CLI to cover workspace configuration management.
-- [ ] Evaluate database options for persisting project and task entities.
+- [ ] Implement SQLite-backed storage for projects and tasks using the evaluated design.
+- [ ] Automate configuration drift detection (notify when `.imme/config.json` diverges across clones).

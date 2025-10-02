@@ -10,9 +10,11 @@ Install dependencies:
 npm install
 ```
 
-Run linting and tests:
+Review the current workspace configuration and run quality gates:
 
 ```bash
+npm run start
+npm run build
 npm run lint
 npm test
 ```
@@ -43,6 +45,25 @@ imme log --message "hello" --filename cli.js
 Entries are appended to `.imme/logs.jsonl` by default. The CLI accepts
 additional context fields (`--system-section`, `--method`, `--db-phase`, etc.)
 that match the canonical log schema.
+
+## Workspace configuration management
+
+Use the `config` subcommands to manage workspace defaults:
+
+```bash
+# Create or refresh the configuration file
+imme config init --name "Imme Workspace"
+
+# Display the current configuration JSON
+imme config show
+
+# Update individual fields using dot-notation keys
+imme config set --key workspace.environment --value production
+```
+
+Configuration lives at `.imme/config.json` and should be committed whenever team
+defaults change. The CLI automatically stamps each update with an ISO-8601
+`lastUpdated` timestamp.
 
 Refer to `docs/runbook.md` for operational procedures and
 `docs/onboarding.md` for contributor guidelines.
