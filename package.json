@@ -1,0 +1,17 @@
+{
+  "name": "imme",
+  "version": "0.1.0",
+  "description": "Imme project workspace",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node --test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^9.11.1",
+    "eslint": "^9.11.1"
+  }
+}
