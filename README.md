@@ -30,3 +30,19 @@ const logger = new StructuredLogger({
 
 logger.info({ message: "Boot sequence complete", functionName: "main" });
 ```
+
+## CLI logging tool
+
+Install the CLI locally to emit structured logs from the terminal:
+
+```bash
+npm link
+imme log --message "hello" --filename cli.js
+```
+
+Entries are appended to `.imme/logs.jsonl` by default. The CLI accepts
+additional context fields (`--system-section`, `--method`, `--db-phase`, etc.)
+that match the canonical log schema.
+
+Refer to `docs/runbook.md` for operational procedures and
+`docs/onboarding.md` for contributor guidelines.

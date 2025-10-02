@@ -1,1 +1,1 @@
-export { StructuredLogger, createLogEntry } from "./logger.js";
+export { StructuredLogger, createLogEntry, createPersistentFileWriter } from "./logger.js";

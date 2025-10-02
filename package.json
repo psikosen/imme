@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Imme project workspace",
   "type": "module",
+  "bin": {
+    "imme": "./bin/imme.js"
+  },
   "scripts": {
     "lint": "eslint .",
     "test": "node --test"
