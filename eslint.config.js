@@ -10,8 +10,17 @@ export default [
     files: ["**/*.js"],
     languageOptions: {
       ...languageOptions,
-      ecmaVersion: 2022,
+      ecmaVersion: "latest",
       sourceType: "module",
+      parserOptions: {
+        ...languageOptions?.parserOptions,
+        ecmaVersion: "latest",
+        sourceType: "module",
+        ecmaFeatures: {
+          ...languageOptions?.parserOptions?.ecmaFeatures,
+          importAssertions: true
+        }
+      },
       globals: {
         ...languageOptions?.globals,
         console: "readonly"

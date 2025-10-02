@@ -6,10 +6,12 @@ This document tracks progress for the Imme project. Checkboxes reflect the curre
 
 - [x] Captured the initial backlog and selected a Node.js (ESM) stack to avoid implicit Python usage.
 - [x] Established the base project skeleton with linting, testing, and structured logging utilities.
+- [x] Defined the domain model and persistence requirements for managing Imme project data.
+- [x] Implemented persistent log storage that complements the console transport.
+- [x] Built a CLI interface that exercises the logger and future business logic end-to-end.
+- [x] Documented operational runbooks and developer onboarding notes.
 
 ## 🔄 In Progress / Backlog
 
-- [ ] Define the domain model and persistence requirements for managing Imme project data.
-- [ ] Implement persistent log storage that complements the console transport.
-- [ ] Build a CLI interface that exercises the logger and future business logic end-to-end.
-- [ ] Document operational runbooks and developer onboarding notes.
+- [ ] Expand the CLI to cover workspace configuration management.
+- [ ] Evaluate database options for persisting project and task entities.

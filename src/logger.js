@@ -1,3 +1,6 @@
+import { appendFileSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+
 const DEFAULT_METHOD = "NONE";
 const DEFAULT_DB_PHASE = "none";
 const ALLOWED_METHODS = new Set(["GET", "POST", "DELETE", "PUT", DEFAULT_METHOD]);
@@ -168,4 +171,53 @@ export class StructuredLogger {
 
     return entry;
   }
+}
+
+function ensureDirectoryExists(filePath) {
+  const directory = dirname(filePath);
+  if (!directory || directory === ".") {
+    return;
+  }
+
+  mkdirSync(directory, { recursive: true });
+}
+
+function normalizeLogValue(value) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  return JSON.stringify(value);
+}
+
+export function createPersistentFileWriter({
+  filePath,
+  ensureDir = true,
+  mode = 0o600
+} = {}) {
+  if (typeof filePath !== "string" || filePath.trim().length === 0) {
+    throw new Error("filePath is required for persistent log writers");
+  }
+
+  if (ensureDir) {
+    ensureDirectoryExists(filePath);
+  }
+
+  const write = (value) => {
+    const serialized = normalizeLogValue(value);
+    appendFileSync(filePath, `${serialized}\n`, {
+      encoding: "utf8",
+      mode,
+      flag: "a"
+    });
+  };
+
+  return {
+    log: write,
+    write
+  };
 }
