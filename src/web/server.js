@@ -404,6 +404,32 @@ async function handleTasksApi({ req, res, pathname, storage, logger }) {
     }
   }
 
+  if (segments.length === 3 && req.method === "DELETE") {
+    const taskId = segments[2];
+
+    try {
+      storage.deleteTask(taskId);
+      res.statusCode = 204;
+      res.end();
+      return;
+    } catch (error) {
+      logger.error({
+        functionName: "handleTasksApi",
+        message: error.message,
+        error,
+        systemSection: "api",
+        method: "DELETE"
+      });
+
+      if (/does not exist/i.test(error.message)) {
+        sendJson(res, 404, { error: error.message });
+      } else {
+        sendJson(res, 400, { error: error.message });
+      }
+      return;
+    }
+  }
+
   sendJson(res, 404, { error: "Not Found" });
 }
 

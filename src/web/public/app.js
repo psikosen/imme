@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* global document, fetch */
+/* global document, fetch, window */
 
 const state = {
   selectedProjectId: null,
@@ -38,7 +38,8 @@ const elements = {
   taskAssignees: document.querySelector('[name="task-assignees"]'),
   taskNotes: document.querySelector('[name="task-notes"]'),
   taskSubmit: document.querySelector('[data-action="submit-task"]'),
-  taskReset: document.querySelector('[data-action="reset-task"]')
+  taskReset: document.querySelector('[data-action="reset-task"]'),
+  taskDelete: document.querySelector('[data-action="delete-task"]')
 };
 
 let taskFormBusy = false;
@@ -438,6 +439,10 @@ function syncTaskFormEnabled() {
   } else {
     elements.taskForm.setAttribute('aria-disabled', 'true');
   }
+
+  if (elements.taskDelete) {
+    elements.taskDelete.disabled = !shouldEnable || !state.editorTaskId;
+  }
 }
 
 function setTaskFormBusy(isBusy) {
@@ -459,6 +464,7 @@ function setTaskEditor(task) {
   clearTaskFeedback();
   updateTaskEditorModeCopy();
   renderTasks(state.tasks);
+  syncTaskFormEnabled();
 }
 
 function resetTaskEditor({ skipRender = false } = {}) {
@@ -547,6 +553,52 @@ async function handleTaskSubmit(event) {
   }
 }
 
+async function handleTaskDelete(event) {
+  event.preventDefault();
+  clearTaskFeedback();
+
+  if (!state.selectedProjectId || !state.editorTaskId) {
+    showTaskFeedback('Select an existing task before deleting.', 'error');
+    return;
+  }
+
+  const confirmed = window.confirm('Delete this task? This action cannot be undone.');
+  if (!confirmed) {
+    return;
+  }
+
+  setTaskFormBusy(true);
+
+  try {
+    const response = await fetch(`/api/tasks/${state.editorTaskId}`, {
+      method: 'DELETE'
+    });
+
+    if (response.status === 404) {
+      throw new Error('Task not found. It may have already been deleted.');
+    }
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    showTaskFeedback('Task deleted successfully.', 'success');
+    resetTaskEditor({ skipRender: true });
+
+    try {
+      await loadTasks(state.selectedProjectId);
+    } catch (refreshError) {
+      console.error('Task deleted but refresh failed:', refreshError);
+      showTaskFeedback(`Task deleted. Refresh failed: ${refreshError.message}`, 'warning');
+    }
+  } catch (error) {
+    console.error('Task deletion failed:', error);
+    showTaskFeedback(error.message, 'error');
+  } finally {
+    setTaskFormBusy(false);
+  }
+}
+
 async function refresh() {
   try {
     elements.refresh.setAttribute('aria-busy', 'true');
@@ -591,6 +643,10 @@ if (elements.taskReset) {
       updateTaskEditorModeCopy();
     }
   });
+}
+
+if (elements.taskDelete) {
+  elements.taskDelete.addEventListener('click', handleTaskDelete);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -158,6 +158,21 @@ test("web API allows creating and updating tasks", async () => {
     const refreshed = await refreshResponse.json();
     assert.equal(refreshed.tasks.length, 1);
     assert.equal(refreshed.tasks[0].status, "in_progress");
+
+    const deleteTaskResponse = await fetch(`${baseUrl}/api/tasks/${created.task.id}`, {
+      method: "DELETE"
+    });
+    assert.equal(deleteTaskResponse.status, 204);
+
+    const afterDeleteResponse = await fetch(`${baseUrl}/api/projects/${project.id}/tasks`);
+    assert.equal(afterDeleteResponse.status, 200);
+    const afterDelete = await afterDeleteResponse.json();
+    assert.equal(afterDelete.tasks.length, 0);
+
+    const missingDeleteResponse = await fetch(`${baseUrl}/api/tasks/${created.task.id}`, {
+      method: "DELETE"
+    });
+    assert.equal(missingDeleteResponse.status, 404);
   } finally {
     context.server.close();
     context.storage.close();
