@@ -1,3 +1,5 @@
 node_modules/
 .DS_Store
 .imme/logs*.jsonl
+.imme/*.jsonl
+.imme/*.db

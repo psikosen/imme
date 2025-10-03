@@ -11,6 +11,7 @@ import {
   resolveConfigPath,
   updateConfigValue
 } from "../src/index.js";
+import { updateWorkspaceConfig, loadWorkspaceSummary } from "../src/index.js";
 
 function createTempDir() {
   return mkdtempSync(join(tmpdir(), "imme-config-"));
@@ -77,6 +78,20 @@ test("loadConfig throws on invalid JSON", () => {
     ensureConfig({ cwd });
     writeFileSync(filePath, "not-json", "utf8");
     assert.throws(() => loadConfig({ cwd }), /Invalid configuration JSON/);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("updateWorkspaceConfig tracks workspace paths", () => {
+  const cwd = createTempDir();
+
+  try {
+    ensureConfig({ cwd });
+    updateWorkspaceConfig({ cwd, updates: { logPath: "./logs/app.jsonl", databasePath: "./data/app.db" } });
+    const summary = loadWorkspaceSummary({ cwd });
+    assert.ok(summary.workspace.logPath.endsWith("logs/app.jsonl"));
+    assert.ok(summary.workspace.databasePath.endsWith("data/app.db"));
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

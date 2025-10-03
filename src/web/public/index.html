@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Imme Workspace</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" src="./app.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>Imme Workspace Control Center</h1>
+        <p>Monitor projects, tasks, and workspace health in a focused dark mode layout.</p>
+      </div>
+      <button class="refresh-button" type="button" aria-label="Refresh workspace data">
+        Refresh
+      </button>
+    </header>
+    <main class="app-main">
+      <section class="workspace-summary" aria-labelledby="workspace-summary-title">
+        <h2 id="workspace-summary-title">Workspace Summary</h2>
+        <dl class="summary-grid">
+          <div>
+            <dt>Name</dt>
+            <dd data-field="workspace-name">&mdash;</dd>
+          </div>
+          <div>
+            <dt>Environment</dt>
+            <dd data-field="workspace-environment">&mdash;</dd>
+          </div>
+          <div>
+            <dt>Log Path</dt>
+            <dd data-field="workspace-log">&mdash;</dd>
+          </div>
+          <div>
+            <dt>Database</dt>
+            <dd data-field="workspace-database">&mdash;</dd>
+          </div>
+          <div>
+            <dt>Last Updated</dt>
+            <dd data-field="workspace-updated">&mdash;</dd>
+          </div>
+        </dl>
+      </section>
+      <section class="projects" aria-labelledby="projects-title">
+        <div class="section-header">
+          <h2 id="projects-title">Projects</h2>
+          <p class="section-subtitle">Select a project to review its tasks and current status.</p>
+        </div>
+        <ul class="project-list" role="list"></ul>
+      </section>
+      <section class="tasks" aria-labelledby="tasks-title">
+        <div class="section-header">
+          <h2 id="tasks-title">Tasks</h2>
+          <p class="section-subtitle" data-field="tasks-context">
+            Choose a project to load its tasks.
+          </p>
+        </div>
+        <ul class="task-list" role="list" aria-live="polite"></ul>
+      </section>
+    </main>
+    <footer class="app-footer">
+      <p>
+        Built with empathy for contributors &mdash; following the Laws of UX to stay clear,
+        consistent, and calm.
+      </p>
+    </footer>
+  </body>
+</html>

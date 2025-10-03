@@ -8,6 +8,9 @@ export {
   ensureConfig,
   loadConfig,
   resolveConfigPath,
+  loadWorkspaceSummary,
   updateConfigValue,
+  updateWorkspaceConfig,
   writeConfig
 } from "./config.js";
+export { SQLiteStorage, createSQLiteStorage } from "./storage/sqlite.js";

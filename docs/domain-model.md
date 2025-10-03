@@ -122,4 +122,20 @@ deployment.
 - Pilot SQLite-based storage using the evaluation above while maintaining JSONL
   logs for append-only record keeping.
 - Extend the new `imme config` command so that persistence settings (database
-  path, rotation policies) are editable alongside log configuration.
+  path, rotation policies) are editable alongside log configuration. The
+  `workspace` subcommand now provides a guided surface for changing the log
+  destination and SQLite database location.
+
+## SQLite Storage Implementation
+
+- **Driver:** [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3)
+  for synchronous access inside the CLI and web server.
+- **Schema:** `projects` and `tasks` tables mirror the Markdown domain model
+  with UUID primary keys, ISO-8601 timestamps, and enum-backed status columns.
+- **Migrations:** DDL statements are versioned in code and tracked with a
+  `schema_migrations` table to maintain forward-only evolution.
+- **Integration points:**
+  - CLI commands read configuration from `.imme/config.json` and update
+    workspace metadata using structured setters.
+  - The web UI consumes a read-only API served by `src/web/server.js`, backed
+    by the shared SQLite storage layer.
