@@ -20,6 +20,7 @@ This document tracks progress for the Imme project. Checkboxes reflect the curre
 - [x] Expanded the web API and UI to support creating and updating projects directly from the dashboard.
 - [x] Expanded the web API with task creation and update endpoints for the dashboard.
 - [x] Delivered an inline task editor that manages assignees, status, and notes from the web UI.
+- [x] Enabled task deletion across the API and dashboard so teams can retire completed work.
 
 ## 🔄 In Progress / Backlog
 

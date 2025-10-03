@@ -196,11 +196,23 @@ body {
   background: var(--color-surface-alt);
 }
 
+.form-actions button[data-variant="danger"] {
+  background: rgba(255, 105, 135, 0.8);
+  color: #1f0f1f;
+}
+
 .form-actions button:hover,
 .form-actions button:focus-visible {
   transform: translateY(-2px);
   box-shadow: 0 12px 18px rgba(0, 0, 0, 0.2);
   outline: none;
+}
+
+.form-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .form-feedback {

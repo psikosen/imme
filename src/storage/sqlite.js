@@ -322,7 +322,11 @@ export class SQLiteStorage {
       throw new Error("Task id is required");
     }
 
-    this.#statements.deleteTask.run(id);
+    const result = this.#statements.deleteTask.run(id);
+    if (!result || result.changes === 0) {
+      throw new Error(`Task ${id} does not exist`);
+    }
+
     this.#log("INFO", {
       functionName: "deleteTask",
       message: `Deleted task ${id}`,

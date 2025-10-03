@@ -49,5 +49,14 @@ test("SQLiteStorage persists projects and tasks", () => {
 
     const tasks = storage.listTasksByProject(project.id);
     assert.equal(tasks.length, 1);
+
+    storage.deleteTask(task.id);
+    const afterDelete = storage.listTasksByProject(project.id);
+    assert.equal(afterDelete.length, 0);
+    assert.equal(storage.getTaskById(task.id), null);
+
+    assert.throws(() => {
+      storage.deleteTask(task.id);
+    }, /does not exist/);
   });
 });
