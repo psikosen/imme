@@ -11,7 +11,10 @@ import {
   createPersistentFileWriter,
   ensureConfig,
   loadConfig,
-  updateConfigValue
+  loadWorkspaceSummary,
+  updateConfigValue,
+  updateWorkspaceConfig,
+  resolveConfigPath
 } from "../src/index.js";
 
 const require = createRequire(import.meta.url);
@@ -45,6 +48,7 @@ function printUsage() {
   console.log("  init                  Create a workspace configuration file");
   console.log("  show                  Display the current configuration");
   console.log("  set --key <path> --value <value>   Update a configuration value");
+  console.log("  workspace <action>    Manage workspace metadata (see --help)");
 }
 
 function printConfigUsage() {
@@ -55,10 +59,18 @@ function printConfigUsage() {
   console.log(`  ${scriptName} config init [--force] [--name <text>] [--environment <text>]`);
   console.log(`  ${scriptName} config show`);
   console.log(`  ${scriptName} config set --key <path> --value <value>`);
+  console.log(`  ${scriptName} config workspace show`);
+  console.log(
+    `  ${scriptName} config workspace set [--name <text>] [--environment <text>] [--log-path <path>] [--database-path <path>]`
+  );
+  console.log(`  ${scriptName} config workspace path`);
   console.log("");
   console.log("Examples:");
   console.log(`  ${scriptName} config init --name "Project Atlas"`);
   console.log(`  ${scriptName} config set --key workspace.environment --value production`);
+  console.log(
+    `  ${scriptName} config workspace set --environment staging --log-path ./artifacts/logs.jsonl`
+  );
 }
 
 function getScriptName() {
@@ -273,6 +285,54 @@ function parseConfigOptions(tokens) {
   return options;
 }
 
+function parseWorkspaceOptions(tokens) {
+  const options = {};
+  const args = [...tokens];
+
+  while (args.length > 0) {
+    const token = args.shift();
+
+    switch (token) {
+      case "--name": {
+        const value = args.shift();
+        if (value === undefined) {
+          throw new Error("Option --name requires a value");
+        }
+        options.name = value;
+        break;
+      }
+      case "--environment": {
+        const value = args.shift();
+        if (value === undefined) {
+          throw new Error("Option --environment requires a value");
+        }
+        options.environment = value;
+        break;
+      }
+      case "--log-path": {
+        const value = args.shift();
+        if (value === undefined) {
+          throw new Error("Option --log-path requires a value");
+        }
+        options.logPath = value;
+        break;
+      }
+      case "--database-path": {
+        const value = args.shift();
+        if (value === undefined) {
+          throw new Error("Option --database-path requires a value");
+        }
+        options.databasePath = value;
+        break;
+      }
+      default:
+        throw new Error(`Unexpected argument: ${token}`);
+    }
+  }
+
+  return options;
+}
+
 function runConfigCommand(args) {
   const tokens = [...args];
   const subcommand = tokens.shift() ?? "show";
@@ -319,6 +379,58 @@ function runConfigCommand(args) {
       const { filePath } = updateConfigValue({ keyPath: options.key, value: options.value });
       console.log(`Updated ${options.key} in ${filePath}`);
       return;
+    }
+
+    case "workspace": {
+      const workspaceCommand = tokens.shift() ?? "show";
+      switch (workspaceCommand) {
+        case "show": {
+          const { workspace } = loadWorkspaceSummary();
+          console.log(
+            JSON.stringify(
+              {
+                name: workspace.name,
+                environment: workspace.environment,
+                logPath: workspace.logPath,
+                databasePath: workspace.databasePath,
+                database: workspace.database,
+                lastUpdated: workspace.lastUpdated
+              },
+              null,
+              2
+            )
+          );
+          return;
+        }
+        case "set": {
+          const options = parseWorkspaceOptions(tokens);
+          if (Object.keys(options).length === 0) {
+            throw new Error("Provide at least one workspace field to update");
+          }
+          const { filePath } = updateWorkspaceConfig({ updates: options });
+          console.log(`Workspace configuration updated in ${filePath}`);
+          return;
+        }
+        case "path": {
+          const { workspace, config } = loadWorkspaceSummary();
+          const configPath = resolveConfigPath();
+          console.log(
+            JSON.stringify(
+              {
+                configPath,
+                logPath: workspace.logPath,
+                databasePath: workspace.databasePath,
+                lastUpdated: workspace.lastUpdated ?? config.workspace?.lastUpdated ?? null
+              },
+              null,
+              2
+            )
+          );
+          return;
+        }
+        default:
+          throw new Error(`Unknown workspace subcommand: ${workspaceCommand}`);
+      }
     }
 
     default:

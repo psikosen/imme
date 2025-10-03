@@ -10,7 +10,8 @@
     "start": "node ./bin/imme.js config show",
     "build": "npm run lint && npm run test",
     "lint": "eslint .",
-    "test": "node --test"
+    "test": "node --test",
+    "web": "node ./src/web/server.js"
   },
   "keywords": [],
   "author": "",
@@ -18,5 +19,8 @@
   "devDependencies": {
     "@eslint/js": "^9.11.1",
     "eslint": "^9.11.1"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3"
   }
 }
