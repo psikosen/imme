@@ -18,6 +18,8 @@ This document tracks progress for the Imme project. Checkboxes reflect the curre
 - [x] Documented trade-offs between SQLite, PostgreSQL, and document stores.
 - [x] Automated configuration drift detection (notifies when `.imme/config.json` diverges across clones).
 - [x] Expanded the web API and UI to support creating and updating projects directly from the dashboard.
+- [x] Expanded the web API with task creation and update endpoints for the dashboard.
+- [x] Delivered an inline task editor that manages assignees, status, and notes from the web UI.
 
 ## 🔄 In Progress / Backlog
 

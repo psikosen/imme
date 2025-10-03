@@ -96,6 +96,56 @@ async function readJsonBody(req) {
   return parsed;
 }
 
+function normalizeTaskTitle(value) {
+  if (typeof value !== "string") {
+    throw new Error("Task title is required");
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error("Task title is required");
+  }
+
+  return trimmed;
+}
+
+function normalizeOptionalString(value, fieldName) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return "";
+  }
+
+  if (typeof value !== "string") {
+    throw new Error(`${fieldName} must be a string`);
+  }
+
+  return value;
+}
+
+function parseAssignees(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error("assignees must be an array of strings");
+  }
+
+  const invalidEntry = value.find((entry) => typeof entry !== "string");
+  if (invalidEntry !== undefined) {
+    throw new Error("assignees must be an array of strings");
+  }
+
+  return value.map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+}
+
 export function start({
   port = DEFAULT_PORT,
   workspaceResolver = loadWorkspaceSummary,
@@ -129,6 +179,11 @@ export function start({
 
       if (pathname.startsWith("/api/projects")) {
         await handleProjectsApi({ req, res, pathname, storage, logger });
+        return;
+      }
+
+      if (pathname.startsWith("/api/tasks")) {
+        await handleTasksApi({ req, res, pathname, storage, logger });
         return;
       }
 
@@ -211,9 +266,47 @@ async function handleProjectsApi({ req, res, pathname, storage, logger }) {
 
   if (segments.length === 4 && segments[3] === "tasks") {
     const projectId = segments[2];
-    const tasks = storage.listTasksByProject(projectId);
-    sendJson(res, 200, { tasks });
-    return;
+    if (req.method === "GET") {
+      const tasks = storage.listTasksByProject(projectId);
+      sendJson(res, 200, { tasks });
+      return;
+    }
+
+    if (req.method === "POST") {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch (error) {
+        sendJson(res, 400, { error: error.message });
+        return;
+      }
+
+      try {
+        const title = normalizeTaskTitle(body.title);
+        const status = typeof body.status === "string" ? body.status : undefined;
+        const assignees = parseAssignees(body.assignees);
+        const notes = normalizeOptionalString(body.notes, "notes");
+        const task = storage.createTask({
+          projectId,
+          title,
+          status,
+          assignees: assignees ?? [],
+          notes: notes ?? ""
+        });
+        sendJson(res, 201, { task });
+        return;
+      } catch (error) {
+        logger.error({
+          functionName: "handleProjectsApi",
+          message: error.message,
+          error,
+          systemSection: "api",
+          method: "POST"
+        });
+        sendJson(res, 400, { error: error.message });
+        return;
+      }
+    }
   }
 
   if (segments.length === 3 && req.method === "PUT") {
@@ -258,6 +351,60 @@ async function handleProjectsApi({ req, res, pathname, storage, logger }) {
 async function handleWorkspaceApi({ res, workspaceResolver }) {
   const { workspace } = workspaceResolver();
   sendJson(res, 200, { workspace });
+}
+
+async function handleTasksApi({ req, res, pathname, storage, logger }) {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length === 3 && req.method === "PUT") {
+    const taskId = segments[2];
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch (error) {
+      sendJson(res, 400, { error: error.message });
+      return;
+    }
+
+    try {
+      const payload = {};
+      if (Object.prototype.hasOwnProperty.call(body, "title")) {
+        payload.title = normalizeTaskTitle(body.title);
+      }
+      if (Object.prototype.hasOwnProperty.call(body, "status")) {
+        payload.status = typeof body.status === "string" ? body.status : undefined;
+      }
+      if (Object.prototype.hasOwnProperty.call(body, "assignees")) {
+        payload.assignees = parseAssignees(body.assignees);
+      }
+      if (Object.prototype.hasOwnProperty.call(body, "notes")) {
+        payload.notes = normalizeOptionalString(body.notes, "notes");
+      }
+
+      if (Object.keys(payload).length === 0) {
+        throw new Error("No task fields provided for update");
+      }
+
+      const task = storage.updateTask({ id: taskId, ...payload });
+      sendJson(res, 200, { task });
+      return;
+    } catch (error) {
+      logger.error({
+        functionName: "handleTasksApi",
+        message: error.message,
+        error,
+        systemSection: "api",
+        method: req.method ?? "NONE"
+      });
+      if (/does not exist/i.test(error.message)) {
+        sendJson(res, 404, { error: error.message });
+      } else {
+        sendJson(res, 400, { error: error.message });
+      }
+      return;
+    }
+  }
+
+  sendJson(res, 404, { error: "Not Found" });
 }
 
 async function handleStatic({ pathname, res, publicDir }) {

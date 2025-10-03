@@ -88,3 +88,79 @@ test("web API allows creating and updating projects", async () => {
     rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test("web API allows creating and updating tasks", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "imme-web-"));
+  const workspaceSummary = createWorkspaceContext(tempDir);
+  const logger = createLoggerStub();
+
+  const context = start({
+    port: 0,
+    workspaceResolver: () => workspaceSummary,
+    loggerFactory: () => logger,
+    publicDir: resolve(process.cwd(), "src", "web", "public")
+  });
+
+  try {
+    await once(context.server, "listening");
+    const address = context.server.address();
+    assert.ok(address && typeof address === "object");
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    const createProjectResponse = await fetch(`${baseUrl}/api/projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Task Suite", description: "Verify tasks", status: "active" })
+    });
+    assert.equal(createProjectResponse.status, 201);
+    const { project } = await createProjectResponse.json();
+    assert.ok(project.id);
+
+    const createTaskResponse = await fetch(`${baseUrl}/api/projects/${project.id}/tasks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Outline requirements",
+        status: "todo",
+        notes: "Draft acceptance criteria",
+        assignees: ["casey", "drew"]
+      })
+    });
+    assert.equal(createTaskResponse.status, 201);
+    const created = await createTaskResponse.json();
+    assert.ok(created.task.id);
+    assert.equal(created.task.projectId, project.id);
+    assert.deepEqual(created.task.assignees, ["casey", "drew"]);
+
+    const listResponse = await fetch(`${baseUrl}/api/projects/${project.id}/tasks`);
+    assert.equal(listResponse.status, 200);
+    const listed = await listResponse.json();
+    assert.equal(listed.tasks.length, 1);
+    assert.equal(listed.tasks[0].title, "Outline requirements");
+
+    const updateTaskResponse = await fetch(`${baseUrl}/api/tasks/${created.task.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "in_progress",
+        notes: "Working through details",
+        assignees: ["drew"]
+      })
+    });
+    assert.equal(updateTaskResponse.status, 200);
+    const updated = await updateTaskResponse.json();
+    assert.equal(updated.task.status, "in_progress");
+    assert.deepEqual(updated.task.assignees, ["drew"]);
+    assert.equal(updated.task.notes, "Working through details");
+
+    const refreshResponse = await fetch(`${baseUrl}/api/projects/${project.id}/tasks`);
+    assert.equal(refreshResponse.status, 200);
+    const refreshed = await refreshResponse.json();
+    assert.equal(refreshed.tasks.length, 1);
+    assert.equal(refreshed.tasks[0].status, "in_progress");
+  } finally {
+    context.server.close();
+    context.storage.close();
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});

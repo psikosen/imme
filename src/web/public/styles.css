@@ -133,7 +133,8 @@ body {
   gap: 1rem;
 }
 
-.project-form {
+.project-form,
+.task-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -231,22 +232,31 @@ body {
   position: relative;
 }
 
-.project-card button {
+.project-card button,
+.task-card button {
   all: unset;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   cursor: pointer;
+  width: 100%;
 }
 
 .project-card:hover,
-.project-card:focus-within {
+.project-card:focus-within,
+.task-card:hover,
+.task-card:focus-within {
   transform: translateY(-4px);
   border-color: rgba(234, 240, 236, 0.35);
   background: rgba(86, 90, 123, 0.75);
 }
 
 .project-card.active {
+  border-color: rgba(210, 216, 249, 0.8);
+  box-shadow: 0 0 0 3px rgba(210, 216, 249, 0.2);
+}
+
+.task-card.active {
   border-color: rgba(210, 216, 249, 0.8);
   box-shadow: 0 0 0 3px rgba(210, 216, 249, 0.2);
 }
@@ -297,6 +307,10 @@ body {
 
 .task-card .status-pill {
   margin-top: 0.5rem;
+}
+
+.task-form[aria-disabled="true"] {
+  opacity: 0.6;
 }
 
 .empty-state {

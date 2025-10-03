@@ -109,8 +109,61 @@
           <p class="section-subtitle" data-field="tasks-context">
             Choose a project to load its tasks.
           </p>
+          <p class="section-subtitle" data-field="task-editor-mode">
+            Select a project to enable the task editor.
+          </p>
         </div>
         <ul class="task-list" role="list" aria-live="polite"></ul>
+        <form class="task-form" autocomplete="off" novalidate>
+          <div class="field-group">
+            <label>
+              <span>Task title</span>
+              <input
+                type="text"
+                name="task-title"
+                required
+                maxlength="160"
+                placeholder="e.g., Draft deployment checklist"
+              />
+            </label>
+          </div>
+          <div class="field-group">
+            <label>
+              <span>Status</span>
+              <select name="task-status">
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="blocked">Blocked</option>
+                <option value="done">Done</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-group">
+            <label>
+              <span>Assignees</span>
+              <input
+                type="text"
+                name="task-assignees"
+                placeholder="Comma-separated names"
+              />
+            </label>
+          </div>
+          <div class="field-group">
+            <label>
+              <span>Notes</span>
+              <textarea
+                name="task-notes"
+                rows="3"
+                placeholder="Context, blockers, or next steps"
+              ></textarea>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" data-action="submit-task">Create Task</button>
+            <button type="button" data-action="reset-task">Clear</button>
+          </div>
+        </form>
+        <p class="form-feedback" data-field="task-feedback" role="status" aria-live="polite"></p>
       </section>
     </main>
     <footer class="app-footer">
