@@ -56,6 +56,53 @@
         </div>
         <ul class="project-list" role="list"></ul>
       </section>
+      <section class="project-editor" aria-labelledby="project-editor-title">
+        <div class="section-header">
+          <h2 id="project-editor-title">Project Editor</h2>
+          <p class="section-subtitle" data-field="editor-mode">
+            Create a new project to track upcoming work.
+          </p>
+        </div>
+        <form class="project-form" autocomplete="off" novalidate>
+          <div class="field-group">
+            <label>
+              <span>Project name</span>
+              <input
+                type="text"
+                name="project-name"
+                required
+                maxlength="120"
+                placeholder="e.g., Observability rollout"
+              />
+            </label>
+          </div>
+          <div class="field-group">
+            <label>
+              <span>Description</span>
+              <textarea
+                name="project-description"
+                rows="3"
+                placeholder="What problem are we solving?"
+              ></textarea>
+            </label>
+          </div>
+          <div class="field-group">
+            <label>
+              <span>Status</span>
+              <select name="project-status">
+                <option value="proposed">Proposed</option>
+                <option value="active">Active</option>
+                <option value="complete">Complete</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" data-action="submit-project">Create Project</button>
+            <button type="button" data-action="reset-editor">Clear</button>
+          </div>
+        </form>
+        <p class="form-feedback" data-field="project-feedback" role="status" aria-live="polite"></p>
+      </section>
       <section class="tasks" aria-labelledby="tasks-title">
         <div class="section-header">
           <h2 id="tasks-title">Tasks</h2>

@@ -15,6 +15,7 @@ import { SQLiteStorage } from "../storage/sqlite.js";
 
 const DEFAULT_PORT = Number.parseInt(process.env.PORT ?? "3000", 10);
 const PUBLIC_DIR = resolve(process.cwd(), "src", "web", "public");
+const MAX_JSON_BODY_SIZE = 1_048_576; // 1 MiB
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -52,17 +53,62 @@ function sendJson(res, statusCode, payload) {
   res.end(body);
 }
 
-function safeJoinPublic(pathname) {
+function safeJoinPublic(publicDir, pathname) {
   const normalized = normalize(pathname)
     .replace(/^(\.{2}[/\\])+/, "")
     .replace(/^\.\/+/, "");
-  return join(PUBLIC_DIR, normalized);
+  return join(publicDir, normalized);
 }
 
-export function start({ port = DEFAULT_PORT } = {}) {
-  const logger = createLogger();
-  const { workspace } = loadWorkspaceSummary();
-  const storage = new SQLiteStorage({ filePath: workspace.databasePath, logger });
+async function readJsonBody(req) {
+  const chunks = [];
+  let totalLength = 0;
+
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalLength += buffer.length;
+    if (totalLength > MAX_JSON_BODY_SIZE) {
+      throw new Error("Payload too large");
+    }
+    chunks.push(buffer);
+  }
+
+  if (chunks.length === 0) {
+    return {};
+  }
+
+  const raw = Buffer.concat(chunks).toString("utf8");
+  if (raw.trim().length === 0) {
+    return {};
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`Invalid JSON payload: ${error.message}`);
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("JSON body must be an object");
+  }
+
+  return parsed;
+}
+
+export function start({
+  port = DEFAULT_PORT,
+  workspaceResolver = loadWorkspaceSummary,
+  storageFactory,
+  loggerFactory = createLogger,
+  publicDir = PUBLIC_DIR
+} = {}) {
+  const logger = loggerFactory();
+  const { workspace } = workspaceResolver();
+  const storage =
+    typeof storageFactory === "function"
+      ? storageFactory({ workspace, logger })
+      : new SQLiteStorage({ filePath: workspace.databasePath, logger });
 
   const server = createServer(async (req, res) => {
     const requestUrl = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -77,16 +123,16 @@ export function start({ port = DEFAULT_PORT } = {}) {
 
     try {
       if (pathname === "/api/workspace") {
-        await handleWorkspaceApi({ res });
+        await handleWorkspaceApi({ res, workspaceResolver });
         return;
       }
 
       if (pathname.startsWith("/api/projects")) {
-        await handleProjectsApi({ req, res, pathname, storage });
+        await handleProjectsApi({ req, res, pathname, storage, logger });
         return;
       }
 
-      await handleStatic({ pathname, res });
+      await handleStatic({ pathname, res, publicDir });
     } catch (error) {
       logger.error({
         functionName: "request",
@@ -123,42 +169,105 @@ export function start({ port = DEFAULT_PORT } = {}) {
   return { server, storage, logger };
 }
 
-async function handleProjectsApi({ req, res, pathname, storage }) {
-  if (req.method !== "GET") {
-    sendJson(res, 405, { error: "Method Not Allowed" });
-    return;
-  }
-
+async function handleProjectsApi({ req, res, pathname, storage, logger }) {
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 2) {
-    const projects = storage.listProjects();
-    sendJson(res, 200, { projects });
-    return;
+    if (req.method === "GET") {
+      const projects = storage.listProjects();
+      sendJson(res, 200, { projects });
+      return;
+    }
+
+    if (req.method === "POST") {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch (error) {
+        sendJson(res, 400, { error: error.message });
+        return;
+      }
+
+      try {
+        const project = storage.createProject({
+          name: body.name,
+          description: body.description,
+          status: body.status
+        });
+        sendJson(res, 201, { project });
+        return;
+      } catch (error) {
+        logger.error({
+          functionName: "handleProjectsApi",
+          message: error.message,
+          error,
+          systemSection: "api",
+          method: "POST"
+        });
+        sendJson(res, 400, { error: error.message });
+        return;
+      }
+    }
   }
 
-  if (segments.length === 4 && segments[2] === "tasks") {
-    const projectId = segments[1];
+  if (segments.length === 4 && segments[3] === "tasks") {
+    const projectId = segments[2];
     const tasks = storage.listTasksByProject(projectId);
     sendJson(res, 200, { tasks });
     return;
   }
 
+  if (segments.length === 3 && req.method === "PUT") {
+    const projectId = segments[2];
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch (error) {
+      sendJson(res, 400, { error: error.message });
+      return;
+    }
+
+    try {
+      const project = storage.updateProject({
+        id: projectId,
+        name: body.name,
+        description: body.description,
+        status: body.status
+      });
+      sendJson(res, 200, { project });
+      return;
+    } catch (error) {
+      logger.error({
+        functionName: "handleProjectsApi",
+        message: error.message,
+        error,
+        systemSection: "api",
+        method: "PUT"
+      });
+      if (/does not exist/i.test(error.message)) {
+        sendJson(res, 404, { error: error.message });
+      } else {
+        sendJson(res, 400, { error: error.message });
+      }
+      return;
+    }
+  }
+
   sendJson(res, 404, { error: "Not Found" });
 }
 
-async function handleWorkspaceApi({ res }) {
-  const { workspace } = loadWorkspaceSummary();
+async function handleWorkspaceApi({ res, workspaceResolver }) {
+  const { workspace } = workspaceResolver();
   sendJson(res, 200, { workspace });
 }
 
-async function handleStatic({ pathname, res }) {
+async function handleStatic({ pathname, res, publicDir }) {
   let target = pathname;
   if (target === "/") {
     target = "/index.html";
   }
 
-  const filePath = safeJoinPublic(target);
-  if (!filePath.startsWith(PUBLIC_DIR) || !existsSync(filePath)) {
+  const filePath = safeJoinPublic(publicDir, target);
+  if (!filePath.startsWith(publicDir) || !existsSync(filePath)) {
     res.statusCode = 404;
     res.end("Not Found");
     return;

@@ -16,8 +16,9 @@ This document tracks progress for the Imme project. Checkboxes reflect the curre
 - [x] Implemented SQLite-backed persistence for projects and tasks.
 - [x] Delivered a dark-mode web UI for monitoring workspace health.
 - [x] Documented trade-offs between SQLite, PostgreSQL, and document stores.
+- [x] Automated configuration drift detection (notifies when `.imme/config.json` diverges across clones).
+- [x] Expanded the web API and UI to support creating and updating projects directly from the dashboard.
 
 ## 🔄 In Progress / Backlog
 
-- [ ] Automate configuration drift detection (notify when `.imme/config.json` diverges across clones).
-- [ ] Expand the web API to support creating and updating projects from the UI.
+_No open items. Capture new tasks below as the roadmap evolves._
