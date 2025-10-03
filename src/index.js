@@ -14,3 +14,4 @@ export {
   writeConfig
 } from "./config.js";
 export { SQLiteStorage, createSQLiteStorage } from "./storage/sqlite.js";
+export { detectConfigDrift, formatDriftReport } from "./config-drift.js";

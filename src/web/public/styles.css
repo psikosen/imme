@@ -77,7 +77,8 @@ body {
 
 .workspace-summary,
 .projects,
-.tasks {
+.tasks,
+.project-editor {
   background: rgba(58, 45, 63, 0.85);
   border-radius: 1.5rem;
   padding: 1.75rem;
@@ -130,6 +131,94 @@ body {
   padding: 0;
   display: grid;
   gap: 1rem;
+}
+
+.project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.field-group label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-weight: 500;
+  color: var(--color-highlight);
+}
+
+.field-group input,
+.field-group textarea,
+.field-group select {
+  background: rgba(86, 90, 123, 0.35);
+  border: 1px solid rgba(234, 240, 236, 0.15);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--color-highlight);
+  font: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.field-group textarea {
+  resize: vertical;
+}
+
+.field-group input:focus-visible,
+.field-group textarea:focus-visible,
+.field-group select:focus-visible {
+  outline: none;
+  border-color: rgba(210, 216, 249, 0.65);
+  box-shadow: 0 0 0 3px rgba(210, 216, 249, 0.25);
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.form-actions button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.65rem 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  color: var(--color-highlight);
+  background: rgba(86, 90, 123, 0.75);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.form-actions button[type="submit"] {
+  background: var(--color-surface-alt);
+}
+
+.form-actions button:hover,
+.form-actions button:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 18px rgba(0, 0, 0, 0.2);
+  outline: none;
+}
+
+.form-feedback {
+  margin-top: 1rem;
+  min-height: 1.25rem;
+  font-size: 0.9rem;
+  color: rgba(234, 240, 236, 0.75);
+}
+
+.form-feedback[data-variant="error"] {
+  color: #ffb3c1;
+}
+
+.form-feedback[data-variant="success"] {
+  color: #b8f7d4;
+}
+
+.form-feedback[data-variant="warning"] {
+  color: #ffe2a8;
 }
 
 .project-card,

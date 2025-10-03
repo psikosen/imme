@@ -3,6 +3,7 @@
 
 const state = {
   selectedProjectId: null,
+  editorProjectId: null,
   projects: [],
   tasks: []
 };
@@ -13,13 +14,21 @@ const fields = {
   logPath: document.querySelector('[data-field="workspace-log"]'),
   database: document.querySelector('[data-field="workspace-database"]'),
   updated: document.querySelector('[data-field="workspace-updated"]'),
-  tasksContext: document.querySelector('[data-field="tasks-context"]')
+  tasksContext: document.querySelector('[data-field="tasks-context"]'),
+  editorMode: document.querySelector('[data-field="editor-mode"]'),
+  projectFeedback: document.querySelector('[data-field="project-feedback"]')
 };
 
 const elements = {
   refresh: document.querySelector('.refresh-button'),
   projectList: document.querySelector('.project-list'),
-  taskList: document.querySelector('.task-list')
+  taskList: document.querySelector('.task-list'),
+  projectForm: document.querySelector('.project-form'),
+  projectName: document.querySelector('[name="project-name"]'),
+  projectDescription: document.querySelector('[name="project-description"]'),
+  projectStatus: document.querySelector('[name="project-status"]'),
+  projectReset: document.querySelector('[data-action="reset-editor"]'),
+  projectSubmit: document.querySelector('[data-action="submit-project"]')
 };
 
 async function fetchJson(url) {
@@ -44,6 +53,72 @@ function formatDate(value) {
   }).format(date);
 }
 
+function populateEditorFields(project) {
+  if (!elements.projectForm) {
+    return;
+  }
+
+  elements.projectName.value = project?.name ?? '';
+  elements.projectDescription.value = project?.description ?? '';
+  elements.projectStatus.value = project?.status ?? 'proposed';
+}
+
+function updateEditorModeCopy() {
+  if (!fields.editorMode || !elements.projectSubmit || !elements.projectReset) {
+    return;
+  }
+
+  if (state.editorProjectId) {
+    fields.editorMode.textContent = 'Editing the selected project. Changes persist immediately after saving.';
+    elements.projectSubmit.textContent = 'Update Project';
+    elements.projectReset.textContent = 'Switch to Create Mode';
+  } else {
+    fields.editorMode.textContent = 'Create a new project to track upcoming work.';
+    elements.projectSubmit.textContent = 'Create Project';
+    elements.projectReset.textContent = 'Clear';
+  }
+}
+
+function setEditorProject(project) {
+  state.editorProjectId = project?.id ?? null;
+  populateEditorFields(project ?? null);
+  updateEditorModeCopy();
+}
+
+function resetProjectEditor() {
+  setEditorProject(null);
+  clearProjectFeedback();
+}
+
+function clearProjectFeedback() {
+  if (!fields.projectFeedback) {
+    return;
+  }
+  fields.projectFeedback.textContent = '';
+  delete fields.projectFeedback.dataset.variant;
+}
+
+function showProjectFeedback(message, variant = 'info') {
+  if (!fields.projectFeedback) {
+    return;
+  }
+  fields.projectFeedback.textContent = message;
+  fields.projectFeedback.dataset.variant = variant;
+}
+
+function setProjectFormBusy(isBusy) {
+  if (!elements.projectForm) {
+    return;
+  }
+  if (isBusy) {
+    elements.projectForm.setAttribute('aria-busy', 'true');
+  } else {
+    elements.projectForm.removeAttribute('aria-busy');
+  }
+  elements.projectSubmit.disabled = isBusy;
+  elements.projectReset.disabled = isBusy;
+}
+
 function renderWorkspaceSummary(workspace) {
   fields.name.textContent = workspace.name;
   fields.environment.textContent = workspace.environment;
@@ -57,7 +132,7 @@ function renderProjects(projects) {
   if (projects.length === 0) {
     const empty = document.createElement('li');
     empty.className = 'empty-state';
-    empty.textContent = 'No projects yet. Create one via the CLI to get started.';
+    empty.textContent = 'No projects yet. Use the editor below to create your first project.';
     elements.projectList.appendChild(empty);
     return;
   }
@@ -146,6 +221,16 @@ async function loadProjects() {
   state.projects = projects;
   if (state.selectedProjectId && !projects.some((project) => project.id === state.selectedProjectId)) {
     state.selectedProjectId = null;
+    resetProjectEditor();
+  } else if (state.editorProjectId) {
+    const project = projects.find((item) => item.id === state.editorProjectId);
+    if (project) {
+      populateEditorFields(project);
+    } else {
+      resetProjectEditor();
+    }
+  } else {
+    updateEditorModeCopy();
   }
   renderProjects(projects);
   if (state.selectedProjectId) {
@@ -163,8 +248,75 @@ async function loadTasks(projectId) {
 
 async function selectProject(projectId) {
   state.selectedProjectId = projectId;
+  const project = state.projects.find((item) => item.id === projectId);
+  if (project) {
+    setEditorProject(project);
+  }
   renderProjects(state.projects);
   await loadTasks(projectId);
+}
+
+async function handleProjectSubmit(event) {
+  event.preventDefault();
+  clearProjectFeedback();
+
+  const name = elements.projectName.value.trim();
+  const description = elements.projectDescription.value.trim();
+  const status = elements.projectStatus.value;
+
+  if (!name) {
+    showProjectFeedback('Project name is required.', 'error');
+    elements.projectName.focus();
+    return;
+  }
+
+  const payload = { name, description, status };
+  setProjectFormBusy(true);
+
+  try {
+    const endpoint = state.editorProjectId ? `/api/projects/${state.editorProjectId}` : '/api/projects';
+    const method = state.editorProjectId ? 'PUT' : 'POST';
+    const response = await fetch(endpoint, {
+      method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    let result = {};
+    try {
+      result = await response.json();
+    } catch {
+      result = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(result.error ?? `Request failed with status ${response.status}`);
+    }
+
+    if (!result.project) {
+      throw new Error('Unexpected API response: missing project payload.');
+    }
+
+    const successMessage = state.editorProjectId ? 'Project updated successfully.' : 'Project created successfully.';
+    showProjectFeedback(successMessage, 'success');
+
+    state.selectedProjectId = result.project.id;
+    setEditorProject(result.project);
+
+    try {
+      await loadProjects();
+    } catch (refreshError) {
+      console.error('Project saved but refresh failed:', refreshError);
+      showProjectFeedback(`${successMessage} Refresh failed: ${refreshError.message}`, 'warning');
+    }
+  } catch (error) {
+    console.error('Project submission failed:', error);
+    showProjectFeedback(error.message, 'error');
+  } finally {
+    setProjectFormBusy(false);
+  }
 }
 
 async function refresh() {
@@ -185,6 +337,18 @@ elements.refresh.addEventListener('click', () => {
   refresh();
 });
 
+if (elements.projectForm) {
+  elements.projectForm.addEventListener('submit', handleProjectSubmit);
+}
+
+if (elements.projectReset) {
+  elements.projectReset.addEventListener('click', (event) => {
+    event.preventDefault();
+    resetProjectEditor();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  resetProjectEditor();
   refresh();
 });

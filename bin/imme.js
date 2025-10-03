@@ -14,7 +14,9 @@ import {
   loadWorkspaceSummary,
   updateConfigValue,
   updateWorkspaceConfig,
-  resolveConfigPath
+  resolveConfigPath,
+  detectConfigDrift,
+  formatDriftReport
 } from "../src/index.js";
 
 const require = createRequire(import.meta.url);
@@ -48,6 +50,7 @@ function printUsage() {
   console.log("  init                  Create a workspace configuration file");
   console.log("  show                  Display the current configuration");
   console.log("  set --key <path> --value <value>   Update a configuration value");
+  console.log("  drift                Detect configuration drift against the current HEAD");
   console.log("  workspace <action>    Manage workspace metadata (see --help)");
 }
 
@@ -59,6 +62,7 @@ function printConfigUsage() {
   console.log(`  ${scriptName} config init [--force] [--name <text>] [--environment <text>]`);
   console.log(`  ${scriptName} config show`);
   console.log(`  ${scriptName} config set --key <path> --value <value>`);
+  console.log(`  ${scriptName} config drift`);
   console.log(`  ${scriptName} config workspace show`);
   console.log(
     `  ${scriptName} config workspace set [--name <text>] [--environment <text>] [--log-path <path>] [--database-path <path>]`
@@ -378,6 +382,16 @@ function runConfigCommand(args) {
 
       const { filePath } = updateConfigValue({ keyPath: options.key, value: options.value });
       console.log(`Updated ${options.key} in ${filePath}`);
+      return;
+    }
+
+    case "drift": {
+      const result = detectConfigDrift();
+      const report = formatDriftReport(result);
+      console.log(report);
+      if (result.hasDrift) {
+        process.exitCode = 1;
+      }
       return;
     }
 
