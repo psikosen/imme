@@ -4,6 +4,7 @@
 const state = {
   selectedProjectId: null,
   editorProjectId: null,
+  editorTaskId: null,
   projects: [],
   tasks: []
 };
@@ -16,7 +17,9 @@ const fields = {
   updated: document.querySelector('[data-field="workspace-updated"]'),
   tasksContext: document.querySelector('[data-field="tasks-context"]'),
   editorMode: document.querySelector('[data-field="editor-mode"]'),
-  projectFeedback: document.querySelector('[data-field="project-feedback"]')
+  projectFeedback: document.querySelector('[data-field="project-feedback"]'),
+  taskEditorMode: document.querySelector('[data-field="task-editor-mode"]'),
+  taskFeedback: document.querySelector('[data-field="task-feedback"]')
 };
 
 const elements = {
@@ -28,8 +31,17 @@ const elements = {
   projectDescription: document.querySelector('[name="project-description"]'),
   projectStatus: document.querySelector('[name="project-status"]'),
   projectReset: document.querySelector('[data-action="reset-editor"]'),
-  projectSubmit: document.querySelector('[data-action="submit-project"]')
+  projectSubmit: document.querySelector('[data-action="submit-project"]'),
+  taskForm: document.querySelector('.task-form'),
+  taskTitle: document.querySelector('[name="task-title"]'),
+  taskStatus: document.querySelector('[name="task-status"]'),
+  taskAssignees: document.querySelector('[name="task-assignees"]'),
+  taskNotes: document.querySelector('[name="task-notes"]'),
+  taskSubmit: document.querySelector('[data-action="submit-task"]'),
+  taskReset: document.querySelector('[data-action="reset-task"]')
 };
+
+let taskFormBusy = false;
 
 async function fetchJson(url) {
   const response = await fetch(url);
@@ -88,6 +100,7 @@ function setEditorProject(project) {
 function resetProjectEditor() {
   setEditorProject(null);
   clearProjectFeedback();
+  resetTaskEditor();
 }
 
 function clearProjectFeedback() {
@@ -169,6 +182,7 @@ function renderTasks(tasks) {
   elements.taskList.innerHTML = '';
   if (!state.selectedProjectId) {
     fields.tasksContext.textContent = 'Choose a project to load its tasks.';
+    updateTaskEditorModeCopy();
     return;
   }
 
@@ -178,6 +192,7 @@ function renderTasks(tasks) {
     empty.className = 'empty-state';
     empty.textContent = 'Tasks will appear here once they are added to the project.';
     elements.taskList.appendChild(empty);
+    updateTaskEditorModeCopy();
     return;
   }
 
@@ -186,6 +201,14 @@ function renderTasks(tasks) {
   for (const task of tasks) {
     const item = document.createElement('li');
     item.className = 'task-card';
+    if (task.id === state.editorTaskId) {
+      item.classList.add('active');
+    }
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('data-task-id', task.id);
+    button.addEventListener('click', () => setTaskEditor(task));
 
     const heading = document.createElement('h3');
     heading.textContent = task.title;
@@ -198,17 +221,28 @@ function renderTasks(tasks) {
     const notes = document.createElement('p');
     notes.textContent = task.notes || 'No notes yet.';
 
-    item.append(heading, status);
+    button.append(heading, status, notes);
 
     if (task.assignees?.length) {
       const assignees = document.createElement('p');
       assignees.textContent = `Assigned to: ${task.assignees.join(', ')}`;
-      item.append(assignees);
+      button.append(assignees);
     }
 
-    item.append(notes);
+    item.append(button);
     elements.taskList.appendChild(item);
   }
+
+  updateTaskEditorModeCopy();
+}
+
+function showTasksLoadingState() {
+  if (!fields.tasksContext || !elements.taskList) {
+    return;
+  }
+
+  fields.tasksContext.textContent = 'Loading tasks…';
+  elements.taskList.innerHTML = '';
 }
 
 async function loadWorkspace() {
@@ -221,6 +255,7 @@ async function loadProjects() {
   state.projects = projects;
   if (state.selectedProjectId && !projects.some((project) => project.id === state.selectedProjectId)) {
     state.selectedProjectId = null;
+    state.tasks = [];
     resetProjectEditor();
   } else if (state.editorProjectId) {
     const project = projects.find((item) => item.id === state.editorProjectId);
@@ -233,6 +268,7 @@ async function loadProjects() {
     updateEditorModeCopy();
   }
   renderProjects(projects);
+  syncTaskFormEnabled();
   if (state.selectedProjectId) {
     await loadTasks(state.selectedProjectId);
   } else {
@@ -248,11 +284,15 @@ async function loadTasks(projectId) {
 
 async function selectProject(projectId) {
   state.selectedProjectId = projectId;
+  state.tasks = [];
+  showTasksLoadingState();
+  resetTaskEditor({ skipRender: true });
   const project = state.projects.find((item) => item.id === projectId);
   if (project) {
     setEditorProject(project);
   }
   renderProjects(state.projects);
+  syncTaskFormEnabled();
   await loadTasks(projectId);
 }
 
@@ -319,6 +359,194 @@ async function handleProjectSubmit(event) {
   }
 }
 
+function parseAssigneesInput(value) {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function populateTaskEditorFields(task) {
+  if (!elements.taskForm) {
+    return;
+  }
+
+  elements.taskTitle.value = task?.title ?? '';
+  elements.taskStatus.value = task?.status ?? 'todo';
+  elements.taskAssignees.value = task?.assignees?.join(', ') ?? '';
+  elements.taskNotes.value = task?.notes ?? '';
+}
+
+function updateTaskEditorModeCopy() {
+  if (!fields.taskEditorMode || !elements.taskSubmit) {
+    return;
+  }
+
+  if (!state.selectedProjectId) {
+    fields.taskEditorMode.textContent = 'Select a project to enable the task editor.';
+    return;
+  }
+
+  if (state.editorTaskId) {
+    fields.taskEditorMode.textContent = 'Editing an existing task. Save to persist your updates.';
+    elements.taskSubmit.textContent = 'Update Task';
+    if (elements.taskReset) {
+      elements.taskReset.textContent = 'Switch to Create Mode';
+    }
+  } else {
+    fields.taskEditorMode.textContent = 'Create a new task for the selected project.';
+    elements.taskSubmit.textContent = 'Create Task';
+    if (elements.taskReset) {
+      elements.taskReset.textContent = 'Clear';
+    }
+  }
+}
+
+function clearTaskFeedback() {
+  if (!fields.taskFeedback) {
+    return;
+  }
+  fields.taskFeedback.textContent = '';
+  delete fields.taskFeedback.dataset.variant;
+}
+
+function showTaskFeedback(message, variant = 'info') {
+  if (!fields.taskFeedback) {
+    return;
+  }
+  fields.taskFeedback.textContent = message;
+  fields.taskFeedback.dataset.variant = variant;
+}
+
+function syncTaskFormEnabled() {
+  if (!elements.taskForm) {
+    return;
+  }
+
+  const shouldEnable = Boolean(state.selectedProjectId) && !taskFormBusy;
+  const controls = elements.taskForm.querySelectorAll('input, textarea, select, button');
+  for (const control of controls) {
+    control.disabled = !shouldEnable;
+  }
+
+  if (shouldEnable) {
+    elements.taskForm.removeAttribute('aria-disabled');
+  } else {
+    elements.taskForm.setAttribute('aria-disabled', 'true');
+  }
+}
+
+function setTaskFormBusy(isBusy) {
+  if (!elements.taskForm) {
+    return;
+  }
+  taskFormBusy = isBusy;
+  if (isBusy) {
+    elements.taskForm.setAttribute('aria-busy', 'true');
+  } else {
+    elements.taskForm.removeAttribute('aria-busy');
+  }
+  syncTaskFormEnabled();
+}
+
+function setTaskEditor(task) {
+  state.editorTaskId = task?.id ?? null;
+  populateTaskEditorFields(task ?? null);
+  clearTaskFeedback();
+  updateTaskEditorModeCopy();
+  renderTasks(state.tasks);
+}
+
+function resetTaskEditor({ skipRender = false } = {}) {
+  state.editorTaskId = null;
+  populateTaskEditorFields(null);
+  clearTaskFeedback();
+  updateTaskEditorModeCopy();
+  syncTaskFormEnabled();
+  if (!skipRender) {
+    renderTasks(state.tasks);
+  }
+}
+
+async function handleTaskSubmit(event) {
+  event.preventDefault();
+  clearTaskFeedback();
+
+  if (!state.selectedProjectId) {
+    showTaskFeedback('Select a project before creating tasks.', 'error');
+    return;
+  }
+
+  const title = elements.taskTitle.value.trim();
+  if (!title) {
+    showTaskFeedback('Task title is required.', 'error');
+    elements.taskTitle.focus();
+    return;
+  }
+
+  const payload = {
+    title,
+    status: elements.taskStatus.value,
+    assignees: parseAssigneesInput(elements.taskAssignees.value),
+    notes: elements.taskNotes.value
+  };
+
+  const endpoint = state.editorTaskId
+    ? `/api/tasks/${state.editorTaskId}`
+    : `/api/projects/${state.selectedProjectId}/tasks`;
+  const method = state.editorTaskId ? 'PUT' : 'POST';
+
+  setTaskFormBusy(true);
+
+  try {
+    const response = await fetch(endpoint, {
+      method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    let result = {};
+    try {
+      result = await response.json();
+    } catch {
+      result = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(result.error ?? `Request failed with status ${response.status}`);
+    }
+
+    if (!result.task) {
+      throw new Error('Unexpected API response: missing task payload.');
+    }
+
+    const successMessage = state.editorTaskId ? 'Task updated successfully.' : 'Task created successfully.';
+    showTaskFeedback(successMessage, 'success');
+
+    state.editorTaskId = result.task.id;
+    populateTaskEditorFields(result.task);
+    updateTaskEditorModeCopy();
+
+    try {
+      await loadTasks(state.selectedProjectId);
+    } catch (refreshError) {
+      console.error('Task saved but refresh failed:', refreshError);
+      showTaskFeedback(`${successMessage} Refresh failed: ${refreshError.message}`, 'warning');
+    }
+  } catch (error) {
+    console.error('Task submission failed:', error);
+    showTaskFeedback(error.message, 'error');
+  } finally {
+    setTaskFormBusy(false);
+  }
+}
+
 async function refresh() {
   try {
     elements.refresh.setAttribute('aria-busy', 'true');
@@ -348,7 +576,25 @@ if (elements.projectReset) {
   });
 }
 
+if (elements.taskForm) {
+  elements.taskForm.addEventListener('submit', handleTaskSubmit);
+}
+
+if (elements.taskReset) {
+  elements.taskReset.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (state.editorTaskId) {
+      resetTaskEditor();
+    } else {
+      populateTaskEditorFields(null);
+      clearTaskFeedback();
+      updateTaskEditorModeCopy();
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   resetProjectEditor();
+  resetTaskEditor();
   refresh();
 });

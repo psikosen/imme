@@ -85,6 +85,6 @@ Launch the workspace dashboard with:
 npm run web
 ```
 
-Visit `http://localhost:3000` to view workspace health, projects, and tasks. The interface follows the provided palette and the Laws of UX for a focused, high-contrast experience. The dashboard now includes a project editor that can create new projects or update the currently selected project via the `/api/projects` POST and PUT endpoints. Use the Refresh button to sync the view after CLI-driven changes.
+Visit `http://localhost:3000` to view workspace health, projects, and tasks. The interface follows the provided palette and the Laws of UX for a focused, high-contrast experience. The dashboard now includes editors for both projects and tasks: create or update projects via the `/api/projects` POST and PUT endpoints, and manage per-project tasks directly from the inline task editor. Use the Refresh button to sync the view after CLI-driven changes.
 
 Refer to `docs/runbook.md` for operational procedures and `docs/onboarding.md` for contributor guidelines.
